@@ -8,6 +8,14 @@ char *src, *old_src; //pointer to source code
 int poolsize;	//default size of text/data/slack
 int line;	//line number
 
+int *text,
+	*old_text,
+	*stack;
+char *data;
+
+int *pc, *bp, *sp, ax, cycle;//virtual machine registers
+
+
 //tokens and classes
 enum {
 	Num = 128, Fun, Sys, Glo, Loc, Id,
@@ -62,6 +70,24 @@ void program() {
 }
 
 int eval() {
+	int op, *tmp;
+    while (1) {
+        if (op == IMM)       {ax = *pc++;}                                     // load immediate value to ax
+        else if (op == LC)   {ax = *(char *)ax;}                               // load character to ax, address in ax
+        else if (op == LI)   {ax = *(int *)ax;}                                // load integer to ax, address in ax
+        else if (op == SC)   {ax = *(char *)*sp++ = ax;}                       // save character to address, value in ax, address on stack
+        else if (op == SI)   {*(int *)*sp++ = ax;}                             // save integer to address, value in ax, address on stack
+		else if (op == PUSH) {*--sp = ax;}  								   //push
+		else if (op == JMP)	 {pc = (int *)*pc;}							   // jump to the address
+		
+		else if (op == JZ)   {pc = ax ? pc + 1 : (int *)*pc;}
+		else if (op == JNZ)	 {pc = ax ? (int *)*pc: pc + 1;}
+		
+		else if (op == CALL) {;}
+		else if (op == RET) {;}
+	}
+	
+	
 	return 0;
 }
 
@@ -91,6 +117,31 @@ int main(int argc, char **argv) {
 	
 	src[i] = 0; //add EOF character
 	close(fd);
+	
+	//allocate memory for virtual machine
+	if(!(text = old_text = malloc(poolsize))) {
+		printf("could not malloc(%d) for text area\n", poolsize);
+	}
+	if(!(data = malloc(poolsize))) {
+		printf("could not malloc(%d) for data area\n", poolsize);
+	}
+	if(!(stack = malloc(poolsize))) {
+		printf("could not malloc(%d) for stack area\n", poolsize);
+		return -1;
+	}
+	
+	memset(text, 0, poolsize);
+	memset(data, 0, poolsize);
+	memset(stack, 0, poolsize);
+	
+	bp = sp = (int *)((int)stack + poolsize);
+	ax = 0;
+	
+	//instructions
+	enum { LEA ,IMM ,JMP ,CALL,JZ  ,JNZ ,ENT ,ADJ ,LEV ,LI  ,LC  ,SI  ,SC  ,PUSH,
+       OR  ,XOR ,AND ,EQ  ,NE  ,LT  ,GT  ,LE  ,GE  ,SHL ,SHR ,ADD ,SUB ,MUL ,DIV ,MOD ,
+       OPEN,READ,CLOS,PRTF,MALC,MSET,MCMP,EXIT };
+	
 	
 	program();
 	return eval();
